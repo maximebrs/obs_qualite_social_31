@@ -153,332 +153,335 @@ with col_gauche:
                 unsafe_allow_html=True
             )
 
-    # Définition du centre et du zoom
-    if choix == "Toute la Haute-Garonne":
-        center, zoom = [43.27274346158933, 1.1799586081287927], 10
-        data_to_map = gdf.dropna(subset=['lat', 'lon'])
-    else:
-        center = [gdf_filtered['lat'].mean(), gdf_filtered['lon'].mean()]
-        zoom = 11
-        data_to_map = gdf_filtered.dropna(subset=['lat', 'lon'])
-
-    # Création de la carte Folium (fond clair pour faire ressortir les points)
-    m = folium.Map(location=center, zoom_start=zoom, tiles=None)
-
-    # Ajout des fonds de plan (Contrôleur de couches)
-    folium.TileLayer(
-        tiles='https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', attr='Google',
-        name='Google Satellite', control=True
-    ).add_to(m)
-    folium.TileLayer('cartodbpositron', name="Plan Clair", control=True).add_to(m)
-
-    try:
+    with st.spinner("Génération de la carte et analyse statistique des données..."):
+        # Définition du centre et du zoom
         if choix == "Toute la Haute-Garonne":
-            # 1. Préparation de l'URL
-            url_dept = "https://geo.api.gouv.fr/epcis?codeDepartement=31&format=geojson&geometry=contour"
-            try:
-                gdf_zoom = gpd.read_file(url_dept)
-                b = gdf_zoom.total_bounds
-                m.fit_bounds([[b[1], b[0]], [b[3], b[2]]])
-            except:
-                pass
-            # 3. Code d'affichage des contours EPCI
-            folium.GeoJson(
-                url_dept, name="Limites EPCI",
-                style_function=lambda x: {'fillColor': 'none', 'color': 'black', 'weight': 1, 'opacity': 0.5}
-            ).add_to(m)
+            center, zoom = [43.27274346158933, 1.1799586081287927], 10
+            data_to_map = gdf.dropna(subset=['lat', 'lon'])
         else:
-            # 1. Préparation des URLs
-            url_contour = f"https://geo.api.gouv.fr/epcis/{code_insee}?format=geojson&geometry=contour"
-            url_communes = f"https://geo.api.gouv.fr/epcis/{code_insee}/communes?format=geojson&geometry=contour"
-            # 2. Calcul du zoom sur l'EPCI sélectionné
-            try:
-                gdf_zoom = gpd.read_file(url_contour)
-                b = gdf_zoom.total_bounds
-                m.fit_bounds([[b[1], b[0]], [b[3], b[2]]])
-            except:
-                pass 
-            # 3. Code d'affichage des contours
-            folium.GeoJson(
-                url_contour,
-                name="Contour EPCI",
-                style_function=lambda x: {'fillColor': 'none', 'color': "gray", 'weight': 3}
-            ).add_to(m)
+            center = [gdf_filtered['lat'].mean(), gdf_filtered['lon'].mean()]
+            zoom = 11
+            data_to_map = gdf_filtered.dropna(subset=['lat', 'lon'])
 
-            folium.GeoJson(
-                url_communes,
-                name="Communes membres",
-                style_function=lambda x: {'fillColor': 'none', 'color': 'gray', 'weight': 0.5, 'dashArray': '5, 5'}
-            ).add_to(m)
-    
-    except Exception as e:
-        st.error(f"Erreur technique de geo.api.gouv.fr : {e}")
+        # Création de la carte Folium (fond clair pour faire ressortir les points)
+        m = folium.Map(location=center, zoom_start=zoom, tiles=None)
 
-    # Affichage dyamique selon le choix
-    if choix == "Toute la Haute-Garonne":
-        marker_cluster = MarkerCluster(name="Parc Social 31").add_to(m)
-        for _, row in data_to_map.iterrows():
-            folium.CircleMarker(
-                location=[row['lat'], row['lon']],
-                radius=5, color='white', weight=0.5, fill=True,
-                fill_color=color_map.get(row['classe_ener_principale'], '#d3d3d3'),
-                fill_opacity=0.8,
-                popup=f"<b>{row['libelle_commune_insee']}</b><br>DPE: {row['classe_ener_principale']}<br>Logements: {row['nb_log']}"
-            ).add_to(marker_cluster)
+        # Ajout des fonds de plan (Contrôleur de couches)
+        folium.TileLayer(
+            tiles='https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', attr='Google',
+            name='Google Satellite', control=True
+        ).add_to(m)
+        folium.TileLayer('cartodbpositron', name="Plan Clair", control=True).add_to(m)
 
-    else:
-        for _, row in gdf_filtered.dropna(subset=['lat', 'lon']).iterrows():
-            folium.CircleMarker(
-                location=[row['lat'], row['lon']],
-                radius=5,
-                color='white',
-                weight=0.5,
-                fill=True,
-                fill_color=color_map.get(row['classe_ener_principale'], '#d3d3d3'),
-                fill_opacity=0.9,
-                popup=f"Commune: {row['libelle_commune_insee']}<br>DPE: {row['classe_ener_principale']}<br>Logements: {row['nb_log']}"
-            ).add_to(m)
+        try:
+            if choix == "Toute la Haute-Garonne":
+                # 1. Préparation de l'URL
+                url_dept = "https://geo.api.gouv.fr/epcis?codeDepartement=31&format=geojson&geometry=contour"
+                try:
+                    gdf_zoom = gpd.read_file(url_dept)
+                    b = gdf_zoom.total_bounds
+                    m.fit_bounds([[b[1], b[0]], [b[3], b[2]]])
+                except:
+                    pass
+                # 3. Code d'affichage des contours EPCI
+                folium.GeoJson(
+                    url_dept, name="Limites EPCI",
+                    style_function=lambda x: {'fillColor': 'none', 'color': 'black', 'weight': 1, 'opacity': 0.5}
+                ).add_to(m)
+            else:
+                # 1. Préparation des URLs
+                url_contour = f"https://geo.api.gouv.fr/epcis/{code_insee}?format=geojson&geometry=contour"
+                url_communes = f"https://geo.api.gouv.fr/epcis/{code_insee}/communes?format=geojson&geometry=contour"
+                # 2. Calcul du zoom sur l'EPCI sélectionné
+                try:
+                    gdf_zoom = gpd.read_file(url_contour)
+                    b = gdf_zoom.total_bounds
+                    m.fit_bounds([[b[1], b[0]], [b[3], b[2]]])
+                except:
+                    pass 
+                # 3. Code d'affichage des contours
+                folium.GeoJson(
+                    url_contour,
+                    name="Contour EPCI",
+                    style_function=lambda x: {'fillColor': 'none', 'color': "gray", 'weight': 3}
+                ).add_to(m)
 
-    # 3. AJOUT DES BOUTONS DE CONTRÔLE
-    # Contrôleur de couches
-    folium.LayerControl(position='topright', collapsed=True).add_to(m)
+                folium.GeoJson(
+                    url_communes,
+                    name="Communes membres",
+                    style_function=lambda x: {'fillColor': 'none', 'color': 'gray', 'weight': 0.5, 'dashArray': '5, 5'}
+                ).add_to(m)
+        
+        except Exception as e:
+            st.error(f"Erreur technique de geo.api.gouv.fr : {e}")
 
-    # 4. Affichage
-    st_folium(m, width="100%", height=500, returned_objects=[])
+        # Affichage dyamique selon le choix
+        if choix == "Toute la Haute-Garonne":
+            marker_cluster = MarkerCluster(name="Parc Social 31").add_to(m)
+            for _, row in data_to_map.iterrows():
+                folium.CircleMarker(
+                    location=[row['lat'], row['lon']],
+                    radius=5, color='white', weight=0.5, fill=True,
+                    fill_color=color_map.get(row['classe_ener_principale'], '#d3d3d3'),
+                    fill_opacity=0.8,
+                    popup=f"<b>{row['libelle_commune_insee']}</b><br>DPE: {row['classe_ener_principale']}<br>Logements: {row['nb_log']}"
+                ).add_to(marker_cluster)
+
+        else:
+            for _, row in gdf_filtered.dropna(subset=['lat', 'lon']).iterrows():
+                folium.CircleMarker(
+                    location=[row['lat'], row['lon']],
+                    radius=5,
+                    color='white',
+                    weight=0.5,
+                    fill=True,
+                    fill_color=color_map.get(row['classe_ener_principale'], '#d3d3d3'),
+                    fill_opacity=0.9,
+                    popup=f"Commune: {row['libelle_commune_insee']}<br>DPE: {row['classe_ener_principale']}<br>Logements: {row['nb_log']}"
+                ).add_to(m)
+
+        # 3. AJOUT DES BOUTONS DE CONTRÔLE
+        # Contrôleur de couches
+        folium.LayerControl(position='topright', collapsed=True).add_to(m)
+
+        # 4. Affichage
+        st_folium(m, width="100%", height=500, returned_objects=[])
 
 with col_droite:
     
     with st.container(border=True):
 
-        col_d1, col_d2 = st.columns(2)
+        with st.spinner("Analyse statistique des données en cours..."):
 
-        with col_d1:
-            # === GRAPHIQUE 1 : QUANTITÉ VS QUALITÉ (EPCI OU COMMUNES) ===
-            col_titre1, col_help1 = st.columns([0.9, 0.1])
-            with col_titre1:
-                st.markdown(f"##### ➤ Volumétrie du parc et performance par :")
-            with col_help1:
-                with st.popover("ℹ️", help="Clés de lecture"):
-                    st.markdown(
-                        """
-                        Ce graphique juxtapose la volumétrie du parc (barres) et sa qualité énergétique moyenne (ligne). 
-                        
-                        - En vue EPCI, il met en lumière les territoires où se concentrent les enjeux de rénovation.
-                        - En vue Communes, il permet d'identifier les communes au sein de l'EPCI qui contribuent le plus à ces enjeux.
-                        
-                        **Analyse :** Identifier les zones prioritaires pour les politiques de rénovation énergétique, en ciblant à la fois la masse critique et la performance.
-                        """
-                    )
+            col_d1, col_d2 = st.columns(2)
 
-            # --- SÉLECTEUR DE VUE ---
-            vue_choisie = st.radio(
-                "",
-                ["EPCI", "Communes"],
-                horizontal=True,
-                label_visibility="collapsed"
-            )
+            with col_d1:
+                # === GRAPHIQUE 1 : QUANTITÉ VS QUALITÉ (EPCI OU COMMUNES) ===
+                col_titre1, col_help1 = st.columns([0.9, 0.1])
+                with col_titre1:
+                    st.markdown(f"##### ➤ Volumétrie du parc et performance par :")
+                with col_help1:
+                    with st.popover("ℹ️", help="Clés de lecture"):
+                        st.markdown(
+                            """
+                            Ce graphique juxtapose la volumétrie du parc (barres) et sa qualité énergétique moyenne (ligne). 
+                            
+                            - En vue EPCI, il met en lumière les territoires où se concentrent les enjeux de rénovation.
+                            - En vue Communes, il permet d'identifier les communes au sein de l'EPCI qui contribuent le plus à ces enjeux.
+                            
+                            **Analyse :** Identifier les zones prioritaires pour les politiques de rénovation énergétique, en ciblant à la fois la masse critique et la performance.
+                            """
+                        )
 
-            # --- LOGIQUE D'AFFICHAGE ---
-            if vue_choisie == "EPCI":
-                # Préparation des données
-                df_plot = gdf.groupby('nom_epci').agg({
-                    'nb_log': 'sum',
-                    'dpe_score_num': 'mean'
-                }).reset_index().dropna()
-                df_plot = df_plot.sort_values('nb_log', ascending=False)
-                # Variables spécifiques
-                x_col = 'nom_epci'
-                colors = ['#EF553B' if x == choix else '#636EFA' for x in df_plot['nom_epci']]
-                hover_fmt = ""
+                # --- SÉLECTEUR DE VUE ---
+                vue_choisie = st.radio(
+                    "",
+                    ["EPCI", "Communes"],
+                    horizontal=True,
+                    label_visibility="collapsed"
+                )
 
-            else:
-                # Préparation des données
-                df_plot = gdf_filtered.groupby('libelle_commune_insee').agg({
-                    'nb_log': 'sum',
-                    'dpe_score_num': 'mean'
-                }).reset_index().dropna()
-                df_plot = df_plot.sort_values('nb_log', ascending=False)
-                # Variables spécifiques
-                x_col = 'libelle_commune_insee'
-                colors = '#636EFA'
-                hover_fmt = "<b>%s</b>"
+                # --- LOGIQUE D'AFFICHAGE ---
+                if vue_choisie == "EPCI":
+                    # Préparation des données
+                    df_plot = gdf.groupby('nom_epci').agg({
+                        'nb_log': 'sum',
+                        'dpe_score_num': 'mean'
+                    }).reset_index().dropna()
+                    df_plot = df_plot.sort_values('nb_log', ascending=False)
+                    # Variables spécifiques
+                    x_col = 'nom_epci'
+                    colors = ['#EF553B' if x == choix else '#636EFA' for x in df_plot['nom_epci']]
+                    hover_fmt = ""
 
-            # --- CRÉATION DU GRAPHIQUE COMMUN ---
-            df_plot['dpe_label'] = df_plot['dpe_score_num'].apply(get_dpe_label)
-            fig = make_subplots(specs=[[{"secondary_y": True}]])
+                else:
+                    # Préparation des données
+                    df_plot = gdf_filtered.groupby('libelle_commune_insee').agg({
+                        'nb_log': 'sum',
+                        'dpe_score_num': 'mean'
+                    }).reset_index().dropna()
+                    df_plot = df_plot.sort_values('nb_log', ascending=False)
+                    # Variables spécifiques
+                    x_col = 'libelle_commune_insee'
+                    colors = '#636EFA'
+                    hover_fmt = "<b>%s</b>"
 
-            # BARRES : Nombre de logements
-            fig.add_trace(
-                go.Bar(
-                    x=df_plot[x_col],
-                    y=df_plot['nb_log'],
-                    name="Volumétrie",
-                    marker_color=colors,
-                    opacity=0.7,
-                    hovertemplate="Logements : %{y}<extra></extra>"
-                ),
-                secondary_y=False,
-            )
+                # --- CRÉATION DU GRAPHIQUE COMMUN ---
+                df_plot['dpe_label'] = df_plot['dpe_score_num'].apply(get_dpe_label)
+                fig = make_subplots(specs=[[{"secondary_y": True}]])
 
-            # LIGNE : Score DPE moyen
-            fig.add_trace(
-                go.Scatter(
-                    x=df_plot[x_col],
-                    y=df_plot['dpe_score_num'],
-                    name="Qualité DPE",
-                    customdata=df_plot['dpe_label'],
-                    mode='lines+markers',
-                    line=dict(color='#00CC96', width=3),
-                    marker=dict(size=8 if vue_choisie == "EPCI" else 4),
-                    hovertemplate="Score moyen : %{customdata}<extra></extra>"
-                ),
-                secondary_y=True,
-            )
+                # BARRES : Nombre de logements
+                fig.add_trace(
+                    go.Bar(
+                        x=df_plot[x_col],
+                        y=df_plot['nb_log'],
+                        name="Volumétrie",
+                        marker_color=colors,
+                        opacity=0.7,
+                        hovertemplate="Logements : %{y}<extra></extra>"
+                    ),
+                    secondary_y=False,
+                )
 
-            # Design commun
-            fig.update_layout(
-                height=350,
-                margin=dict(l=0, r=0, t=10, b=10),
-                legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-                hovermode="x unified",
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)'
-            )
+                # LIGNE : Score DPE moyen
+                fig.add_trace(
+                    go.Scatter(
+                        x=df_plot[x_col],
+                        y=df_plot['dpe_score_num'],
+                        name="Qualité DPE",
+                        customdata=df_plot['dpe_label'],
+                        mode='lines+markers',
+                        line=dict(color='#00CC96', width=3),
+                        marker=dict(size=8 if vue_choisie == "EPCI" else 4),
+                        hovertemplate="Score moyen : %{customdata}<extra></extra>"
+                    ),
+                    secondary_y=True,
+                )
 
-            fig.update_xaxes(
-                showticklabels=False, 
-                showgrid=False,
-                title_text="",
-                hoverformat=hover_fmt
-            )
+                # Design commun
+                fig.update_layout(
+                    height=350,
+                    margin=dict(l=0, r=0, t=10, b=10),
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                    hovermode="x unified",
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    plot_bgcolor='rgba(0,0,0,0)'
+                )
 
-            fig.update_yaxes(secondary_y=False, showgrid=True, gridcolor='lightgrey')
-            fig.update_yaxes(
-                secondary_y=True,
-                range=[1, 7],
-                tickvals=[1, 2, 3, 4, 5, 6, 7],
-                ticktext=['G', 'F', 'E', 'D', 'C', 'B', 'A'],
-                showgrid=False
-            )
+                fig.update_xaxes(
+                    showticklabels=False, 
+                    showgrid=False,
+                    title_text="",
+                    hoverformat=hover_fmt
+                )
 
-            st.plotly_chart(fig, width='stretch', config={'displayModeBar': False})
+                fig.update_yaxes(secondary_y=False, showgrid=True, gridcolor='lightgrey')
+                fig.update_yaxes(
+                    secondary_y=True,
+                    range=[1, 7],
+                    tickvals=[1, 2, 3, 4, 5, 6, 7],
+                    ticktext=['G', 'F', 'E', 'D', 'C', 'B', 'A'],
+                    showgrid=False
+                )
 
-            # === GRAPHIQUE 2 : RÉPARTITION PAR CLASSE DPE (TREEMAP) ===
+                st.plotly_chart(fig, width='stretch', config={'displayModeBar': False})
 
-            col_titre2, col_help2 = st.columns([0.9, 0.1])
-            with col_titre2:
-                st.markdown("##### ➤ Structure du parc || Poids relatif des étiquettes DPE")
-            with col_help2:
-                with st.popover("ℹ️", help="Clés de lecture"):
-                    st.markdown(
-                        """
-                        Ce graphique représente la décomposition du parc social par classe DPE.
-    
-                        * **Poids visuel :** La taille de chaque bloc est proportionnelle au nombre de bâtiments.
-                        * **Performance globale :** 
-                            * **A-B :** Haute performance (neuf/rénové).
-                            * **C-D :** Performance moyenne.
-                            * **E-F-G :** Passoires thermiques prioritaires.
-                        
-                        **Analyse :** Permet d'évaluer instantanément la maturité énergétique du patrimoine sélectionné.
-                        """
-                    )
+                # === GRAPHIQUE 2 : RÉPARTITION PAR CLASSE DPE (TREEMAP) ===
 
-            # 1. Préparation des données (Identique)
-            ordre_dpe = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
-            df_repart = gdf_filtered['classe_ener_principale'].value_counts().reindex(ordre_dpe, fill_value=0).reset_index()
-            df_repart.columns = ['Classe', 'Nb_Batiments']
-
-            # 2. Création de la Treemap
-            fig_repart = px.treemap(
-                df_repart,
-                path=['Classe'], # Définit la hiérarchie (ici simple)
-                values='Nb_Batiments',
-                color='Classe',
-                color_discrete_map=color_map # Utilise ton dictionnaire de couleurs officiel
-            )
-
-            fig_repart.update_layout(
-                height=200, 
-                margin=dict(l=0, r=0, t=5, b=5),
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)'
-            )
-
-            fig_repart.update_traces(
-                textinfo="label+value", # Affiche la lettre et le nombre
-                textfont=dict(size=16, color="white"),
-                hovertemplate="<b>Classe %{label}</b><br>%{value} bâtiments<extra></extra>",
-                marker_pad=dict(t=0, l=0, r=0, b=0) # Supprime les marges entre les blocs
-            )
-
-            st.plotly_chart(fig_repart, width='stretch', config={'displayModeBar': False})
+                col_titre2, col_help2 = st.columns([0.9, 0.1])
+                with col_titre2:
+                    st.markdown("##### ➤ Structure du parc || Poids relatif des étiquettes DPE")
+                with col_help2:
+                    with st.popover("ℹ️", help="Clés de lecture"):
+                        st.markdown(
+                            """
+                            Ce graphique représente la décomposition du parc social par classe DPE.
         
-        with col_d2:
-            col_titre3, col_help3 = st.columns([0.9, 0.1])
-            with col_titre3:
-                st.markdown("##### ➤ Dynamique de construction et performance thermique")
-            with col_help3:
-                with st.popover("ℹ️", help="Clés de lecture"):
-                    st.markdown("""
-                    Ce graphique croise l'histoire du bâti, sa forme et sa performance actuelle.
-                    
-                    * **Volume (Haut) :** Nombre de logements construits. Identifie le poids historique de chaque période.
-                    * **Morphologie (Milieu) :** Part de **Collectif** (bleu) vs **Individuel** (orange).
-                    * **Performance (Bas) :** Évolution des étiquettes DPE. Le passage au "tout vert" (A-B) illustre l'efficacité des normes récentes.
-                    
-                    **Analyse :** La lecture verticale permet de lier les 3 métriques à la période de construction.
-                    """)
+                            * **Poids visuel :** La taille de chaque bloc est proportionnelle au nombre de bâtiments.
+                            * **Performance globale :** 
+                                * **A-B :** Haute performance (neuf/rénové).
+                                * **C-D :** Performance moyenne.
+                                * **E-F-G :** Passoires thermiques prioritaires.
+                            
+                            **Analyse :** Permet d'évaluer instantanément la maturité énergétique du patrimoine sélectionné.
+                            """
+                        )
+
+                # 1. Préparation des données (Identique)
+                ordre_dpe = ['A', 'B', 'C', 'D', 'E', 'F', 'G']
+                df_repart = gdf_filtered['classe_ener_principale'].value_counts().reindex(ordre_dpe, fill_value=0).reset_index()
+                df_repart.columns = ['Classe', 'Nb_Batiments']
+
+                # 2. Création de la Treemap
+                fig_repart = px.treemap(
+                    df_repart,
+                    path=['Classe'], # Définit la hiérarchie (ici simple)
+                    values='Nb_Batiments',
+                    color='Classe',
+                    color_discrete_map=color_map # Utilise ton dictionnaire de couleurs officiel
+                )
+
+                fig_repart.update_layout(
+                    height=200, 
+                    margin=dict(l=0, r=0, t=5, b=5),
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    plot_bgcolor='rgba(0,0,0,0)'
+                )
+
+                fig_repart.update_traces(
+                    textinfo="label+value", # Affiche la lettre et le nombre
+                    textfont=dict(size=16, color="white"),
+                    hovertemplate="<b>Classe %{label}</b><br>%{value} bâtiments<extra></extra>",
+                    marker_pad=dict(t=0, l=0, r=0, b=0) # Supprime les marges entre les blocs
+                )
+
+                st.plotly_chart(fig_repart, width='stretch', config={'displayModeBar': False})
             
-            # 1. Préparation des données filtrées
-            # Assurez-vous que 'type_batiment_dpe' est bien dans votre export GeoJSON
-            df_hist = gdf_filtered.dropna(subset=['periode_construction_dpe', 'classe_ener_principale'])
-            ordre_periodes = ["avant 1948", "1948-1974", "1975-1977", "1978-1982", 
-                            "1983-1988", "1989-2000", "2001-2005", "2006-2012", "2013-2021"]
-            df_hist['morpho'] = df_hist['type_batiment_dpe'].apply(get_morpho)
+            with col_d2:
+                col_titre3, col_help3 = st.columns([0.9, 0.1])
+                with col_titre3:
+                    st.markdown("##### ➤ Dynamique de construction et performance thermique")
+                with col_help3:
+                    with st.popover("ℹ️", help="Clés de lecture"):
+                        st.markdown("""
+                        Ce graphique croise l'histoire du bâti, sa forme et sa performance actuelle.
+                        
+                        * **Volume (Haut) :** Nombre de logements construits. Identifie le poids historique de chaque période.
+                        * **Morphologie (Milieu) :** Part de **Collectif** (bleu) vs **Individuel** (orange).
+                        * **Performance (Bas) :** Évolution des étiquettes DPE. Le passage au "tout vert" (A-B) illustre l'efficacité des normes récentes.
+                        
+                        **Analyse :** La lecture verticale permet de lier les 3 métriques à la période de construction.
+                        """)
+                
+                # 1. Préparation des données filtrées
+                # Assurez-vous que 'type_batiment_dpe' est bien dans votre export GeoJSON
+                df_hist = gdf_filtered.dropna(subset=['periode_construction_dpe', 'classe_ener_principale'])
+                ordre_periodes = ["avant 1948", "1948-1974", "1975-1977", "1978-1982", 
+                                "1983-1988", "1989-2000", "2001-2005", "2006-2012", "2013-2021"]
+                df_hist['morpho'] = df_hist['type_batiment_dpe'].apply(get_morpho)
 
-            # --- A. VOLUME (HAUT - Hauteur augmentée à 220px) ---
-            df_vol = df_hist.groupby('periode_construction_dpe')['nb_log'].sum().reset_index()
-            fig_v = px.bar(df_vol, x='periode_construction_dpe', y='nb_log', 
-                           category_orders={'periode_construction_dpe': ordre_periodes}, height=200)
-            fig_v.update_layout(margin=dict(l=60, r=10, t=10, b=0), showlegend=False,
-                                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                                xaxis=dict(visible=False), yaxis=dict(title="Logements"))
-            st.plotly_chart(fig_v, width="stretch", config={'displayModeBar': False})
+                # --- A. VOLUME (HAUT - Hauteur augmentée à 220px) ---
+                df_vol = df_hist.groupby('periode_construction_dpe')['nb_log'].sum().reset_index()
+                fig_v = px.bar(df_vol, x='periode_construction_dpe', y='nb_log', 
+                            category_orders={'periode_construction_dpe': ordre_periodes}, height=200)
+                fig_v.update_layout(margin=dict(l=60, r=10, t=10, b=0), showlegend=False,
+                                    paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                                    xaxis=dict(visible=False), yaxis=dict(title="Logements"))
+                st.plotly_chart(fig_v, width="stretch", config={'displayModeBar': False})
 
-            # --- B. MORPHOLOGIE (MILIEU - Hauteur augmentée à 120px) ---
-            df_m = df_hist.groupby(['periode_construction_dpe', 'morpho'])['nb_log'].sum().reset_index()
-            fig_m = px.bar(df_m, x='periode_construction_dpe', y='nb_log', color='morpho',
-                           category_orders={'periode_construction_dpe': ordre_periodes}, height=150,
-                           color_discrete_map={"Collectif": "#1f77b4", "Individuel": "#ff7f0e"})
-            fig_m.update_layout(barmode='stack', barnorm='percent', showlegend=False,
-                                margin=dict(l=60, r=10, t=0, b=0),
-                                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                                xaxis=dict(visible=False), 
-                                yaxis=dict(
-                                    visible=True,
-                                    tickmode='array',
-                                    tickvals=[25, 50, 75, 100],
-                                    title="Morphologie (%)",
-                                    showgrid=True,
-                                    gridcolor='rgba(200,200,200,0.1)'
-                                ))
-            st.plotly_chart(fig_m, width="stretch", config={'displayModeBar': False})
+                # --- B. MORPHOLOGIE (MILIEU - Hauteur augmentée à 120px) ---
+                df_m = df_hist.groupby(['periode_construction_dpe', 'morpho'])['nb_log'].sum().reset_index()
+                fig_m = px.bar(df_m, x='periode_construction_dpe', y='nb_log', color='morpho',
+                            category_orders={'periode_construction_dpe': ordre_periodes}, height=150,
+                            color_discrete_map={"Collectif": "#1f77b4", "Individuel": "#ff7f0e"})
+                fig_m.update_layout(barmode='stack', barnorm='percent', showlegend=False,
+                                    margin=dict(l=60, r=10, t=0, b=0),
+                                    paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                                    xaxis=dict(visible=False), 
+                                    yaxis=dict(
+                                        visible=True,
+                                        tickmode='array',
+                                        tickvals=[25, 50, 75, 100],
+                                        title="Morphologie (%)",
+                                        showgrid=True,
+                                        gridcolor='rgba(200,200,200,0.1)'
+                                    ))
+                st.plotly_chart(fig_m, width="stretch", config={'displayModeBar': False})
 
-            # --- C. PERFORMANCE (BAS - Hauteur augmentée à 450px pour remplir le vide) ---
-            df_p = df_hist.groupby(['periode_construction_dpe', 'classe_ener_principale'])['nb_log'].sum().reset_index()
-            fig_p = px.bar(df_p, x='periode_construction_dpe', y='nb_log', color='classe_ener_principale',
-                           color_discrete_map=color_map, category_orders={'periode_construction_dpe': ordre_periodes}, height=300)
-            fig_p.update_layout(barmode='stack', barnorm='percent', showlegend=False,
-                                margin=dict(l=60, r=10, t=0, b=80),
-                                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                                xaxis=dict(visible=True, title=None, tickangle=-45),
-                                yaxis=dict(
-                                    visible=True,
-                                    tickmode='array',
-                                    tickvals=[25, 50, 75, 100],
-                                    title="DPE (%)",
-                                    showgrid=True,
-                                    gridcolor='rgba(200,200,200,0.1)'
-                                ))
-            st.plotly_chart(fig_p, width="stretch", config={'displayModeBar': False})
+                # --- C. PERFORMANCE (BAS - Hauteur augmentée à 450px pour remplir le vide) ---
+                df_p = df_hist.groupby(['periode_construction_dpe', 'classe_ener_principale'])['nb_log'].sum().reset_index()
+                fig_p = px.bar(df_p, x='periode_construction_dpe', y='nb_log', color='classe_ener_principale',
+                            color_discrete_map=color_map, category_orders={'periode_construction_dpe': ordre_periodes}, height=300)
+                fig_p.update_layout(barmode='stack', barnorm='percent', showlegend=False,
+                                    margin=dict(l=60, r=10, t=0, b=80),
+                                    paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                                    xaxis=dict(visible=True, title=None, tickangle=-45),
+                                    yaxis=dict(
+                                        visible=True,
+                                        tickmode='array',
+                                        tickvals=[25, 50, 75, 100],
+                                        title="DPE (%)",
+                                        showgrid=True,
+                                        gridcolor='rgba(200,200,200,0.1)'
+                                    ))
+                st.plotly_chart(fig_p, width="stretch", config={'displayModeBar': False})
