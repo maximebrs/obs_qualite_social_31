@@ -246,6 +246,8 @@ with col_gauche:
 
         # 4. Affichage
         st_folium(m, width="100%", height=500, returned_objects=[])
+    
+    st.markdown("**Sources** : [Base de données nationale des bâtiments (RPLS & DPE)](https://hackathon.data.gouv.fr/datasets/61dc7157488f8cdb4283e3c3) | **Données géographiques** : [geo.api.gouv.fr](https://geo.api.gouv.fr/decoupage-administratif)")
 
 with col_droite:
     
